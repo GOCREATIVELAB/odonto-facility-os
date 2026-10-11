@@ -1,0 +1,46 @@
+# PRD: PRODUCT REQUIREMENTS DOCUMENT
+**Projeto:** Odonto Facility OS
+**Versão:** 1.0.0 | **Stack Direcionado:** Svelte 5, Three.js, GSAP, Tailwind, Supabase, Cloudflare Workers, Node.js + Gemini API.
+
+## 1. Visão Executiva e Objetivo
+Plataforma de inteligência operacional de alta latência-zero para clínicas odontológicas premium. O sistema opera como um gêmeo digital (Digital Twin) onde um orquestrador de Inteligência Artificial (Gemini) processa a telemetria física (Recepção/Consultórios) e coordena agentes sub-departamentais para gerar relatórios ao vivo e prever gargalos logísticos.
+
+## 2. Arquitetura Multi-Agentes (Core Logic)
+O cérebro do sistema utiliza chamadas de sistema baseadas em eventos para o LLM, estruturadas nos seguintes sub-agentes autônomos:
+
+### 2.1. Agente Orquestrador (Master AI)
+*   **Função:** Analisar streams de dados via WebSocket do banco de dados (Supabase) em intervalos de 5 segundos.
+*   **Regra de Negócio:** Se a `sala_X` excede o `tempo_previsto` em > 15%, o Orquestrador emite um payload JSON via evento para os painéis do RH e Societário.
+*   **Output Técnico:** Atualização do estado global `$state` em Svelte, alterando a cor da sala no Three.js para `#FF9500` (Alerta de Gargalo).
+
+### 2.2. Agente de Recepção (Triage & Pathfinding)
+*   **Função:** Distribuição de carga lógica (*Load Balancing*).
+*   **Regra de Negócio Exata:** Ao receber um input (Novo Paciente + Especialidade), a IA analisa o status (`livre`/`ocupado`/`tempo_restante`) das salas adequadas.
+    *   *Se Clínico Geral:* Distribui entre Salas 1, 2 e 3 priorizando a sala com maior tempo de ociosidade atual (*Round-Robin* inteligente).
+    *   *Se Urgência:* Direciona à Sala 4. Se a Sala 4 estiver ocupada, avalia gravidade e bloqueia a próxima liberação das Salas 1-3.
+    *   *Se Aparelho:* Enfileira exclusivamente na Sala 5.
+*   **Ação Física (3D):** Aciona a função de animação GSAP. Instancia um avatar (marcador HTML via `CSS2DRenderer`) no nó "Recepção" e o move via pathfinding predefinido até o nó da "Sala Designada".
+
+### 2.3. Agente de RH (Monitoramento de Carga)
+*   **Regra de Negócio:** Monitora a variável de tempo logado de cada profissional no sistema de gestão de prontuários.
+*   **Triggers:**
+    *   `turn_continuous > 240min` -> Emite alerta: "Necessária pausa de 15min para o Dr. Y".
+    *   `patient_delay_complaint` -> O agente de RH cruza com a ociosidade do doutor e relata ao Sócio.
+
+### 2.4. Agente do Quadro Societário (Business Intelligence)
+*   **Regra de Negócio:** Parse de dados financeiros em tempo real. Cada evento de "Consulta Encerrada" acompanhado de "Faturamento Aprovado" na base de dados injeta uma atualização reativa no painel de KPIs.
+*   **Triggers:** Calcula taxa de conversão diária (Orçamentos apresentados vs. Orçamentos aprovados) e projeta o fechamento do caixa do dia baseado em predição da IA.
+
+## 3. Requisitos Estruturais do Engine 3D e Animação
+*   **Motor:** Three.js encapsulado via Threlte (ou Svelte Cubed). O modelo 3D (exportado do Blender em `.GLB` com compressão Draco) deve ter instâncias separadas para as paredes das salas (para permitir mudança dinâmica de cor/material emissivo).
+*   **Sistema de Avatares:** Os pacientes não são malhas 3D para otimização de performance. Eles DEVEM ser renderizados usando `CSS2DObject` anexados a nós vazios (`Group`) no Three.js. Isso garante texto nítido para nomes e contadores de tempo, sempre encarando a câmera (*billboarding*).
+*   **Interpolação GSAP:** O deslocamento do avatar não é instantâneo. Utilizar `gsap.to()` iterando sobre coordenadas extraídas de uma curva de bezier invisível (caminho dos corredores) para simular caminhada. Duração calculada pela distância, ex: `duration: distance * 0.5`.
+
+## 4. Requisitos de Estado e Reatividade (Frontend)
+*   **Svelte 5 Runes:** O estado de toda a clínica deve residir em um arquivo `$state` central (ex: `clinicState.svelte.ts`). 
+*   Variáveis obrigatórias: `patientsInLobby[]`, `roomsStatus{ 1: {}, 2: {}, ... }`, `activeAlerts[]`.
+*   A alteração de qualquer destas propriedades deve refletir instantaneamente nas tags HTML de vidro (UI) e nos materiais WebGL do canvas sem necessidade de reload.
+
+## 5. Requisitos de Infraestrutura
+*   **Deploy UI:** O painel SvelteKit deverá ser exportado via adapter-auto ou static e hospedado na Vercel ou Cloudflare Pages.
+*   **Data Layer:** O backend opera via Supabase Realtime (WebSockets) garantindo que quando a secretária do plano térreo atualizar um status, a tela do CEO no andar de cima pisque em menos de 500ms.

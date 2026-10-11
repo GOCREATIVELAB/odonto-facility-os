@@ -1,0 +1,72 @@
+# DESIGN SYSTEM: Odonto UI (Especificações Técnicas)
+**Conceito Base:** Glassmorphism de Alta Densidade de Dados. O design absorve os princípios de fluidez de navegação do universo Apple e a paleta utilitária rica em dados de plataformas como Linear e Stripe. Não há sombras pesadas sólidas, apenas difusão de luz e desfoques (blur).
+
+## 1. Tokens Fundamentais
+
+### 1.1. Tipografia (Importada do Google Fonts ou Local)
+*   **Font Family Principal:** `Inter` (Fallback: `system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto`).
+*   **Configuração Obrigatória CSS:** 
+    ```css
+    .tabular-data {
+      font-feature-settings: "tnum" on, "lnum" on;
+      font-variant-numeric: tabular-nums;
+    }
+    ```
+*   **Escala:**
+    *   H1 (Títulos de Módulos): 24px, Peso 600, Tracking -0.02em.
+    *   H2 (Nomes de Pacientes/Médicos): 16px, Peso 500.
+    *   Body (Eventos de texto): 14px, Peso 400, Cor `rgba(255,255,255, 0.7)`.
+    *   Caption (Timers, ETA): 12px, Peso 500, Maiúsculas, Tracking +0.05em.
+
+### 1.2. Paleta de Cores e Materiais 3D
+
+**Interface Glassmorph (Modo Único - Foco em contraste para Telas Grandes):**
+*   **Base do Fundo (`--bg-glass`):** `rgba(250, 250, 252, 0.65)` para fundos claros ou `rgba(18, 18, 20, 0.55)` para fundos escuros (Dark Mode é recomendado para salas de controle).
+*   **Desfoque (`--backdrop-filter`):** `blur(32px) saturate(150%)`.
+*   **Borda Translúcida (`--border-glass`):** `1px solid rgba(255, 255, 255, 0.15)` e `box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1)`.
+
+**Semântica de Lógica e Iluminação 3D (Luzes de Teto das Salas):**
+O `MeshPhysicalMaterial` das salas 3D deve utilizar a propriedade `emissive` lincada a estas HEX:
+*   `#FFFFFF` (Neutro): Consultório vazio. *Intensidade: 0.2*
+*   `#007AFF` (Azul IOS - Operação Normal): Sala Clínico Geral (1, 2, 3) com paciente. *Intensidade: 0.8*
+*   `#FF3B30` (Vermelho - Urgência): Sala 4 ocupada. *Intensidade: 1.0 (Pulsante sutil)*
+*   `#AF52DE` (Roxo - Ortodontia): Sala 5 ocupada. *Intensidade: 0.8*
+*   `#FF9500` (Laranja - Alerta de Gargalo): Qualquer sala que excedeu o tempo de atendimento em 15%. *Intensidade: 1.2 (Animação Flash de 2s via GSAP)*
+*   `#34C759` (Verde - Sucesso Financeiro): Feedback temporário quando uma nova venda de plano/tratamento é confirmada naquela sala.
+
+## 2. Especificação de Componentes UI
+
+### 2.1. `<GlassPanel />`
+Container principal de toda a UI.
+*   **CSS Estrutural:** 
+    `border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 16px;`
+*   Deve ter `pointer-events: auto` e um elemento invisível interno atuando como *scroll container* ocultando barras de rolagem nativas (`::-webkit-scrollbar { display: none; }`).
+
+### 2.2. `<KPIWidget />`
+Bloco financeiro para a visão do Sócio.
+*   **Layout:** Grid 2 colunas. Coluna esquerda com Label (ex: "Faturamento Atual") em cinza claro e Valor (ex: "R$ 14.500") em branco. Coluna direita com mini-gráfico vetorial (Sparkline) demonstrando a inclinação em relação ao dia anterior.
+*   **Interação:** Ao passar o mouse (Hover), a borda sutilmente ilumina na posição do cursor via radial-gradient rastreado por Javascript.
+
+### 2.3. `<LiveAvatar />` (Componente Three.js HTML)
+O marcador posicionado sobre o mapa 3D.
+*   **Estrutura:** Uma div arredondada de `40px x 40px`.
+*   **Design:** Fundo em `rgba(20,20,20,0.8)` com texto da inicial em branco (`16px bold`).
+*   **Borda Dinâmica (SVG Ring):** Uma borda circular em SVG atuando como timer de progresso. A cor da borda muda de Verde -> Amarelo -> Vermelho conforme o ETA (Estimated Time of Arrival / Espera) se esgota.
+*   **Shadow Drop 3D:** Abaixo do avatar flutuante, projetar uma sombra no piso 3D (`MeshBasicMaterial` preto transparente mapeado no eixo Y=0.01).
+
+## 3. Motion System (Especificações GSAP)
+
+### 3.1. Câmera Coreography (Troca de Abas)
+Quando o Sócio clica na aba "Urgência (Sala 4)":
+```javascript
+gsap.to(camera.position, {
+  x: coords_sala4.x + 20, 
+  y: coords_sala4.y + 40, 
+  z: coords_sala4.z + 20,
+  duration: 1.6,
+  ease: "power3.inOut"
+});
+
+### 3.2. Micro-interações na UI
+​Montagem Inicial (Page Load): Todos os <GlassPanel> surgem com y: 40, opacity: 0 evoluindo para y: 0, opacity: 1 em um stagger de 0.1s utilizando ease: "expo.out".
+​Atualização de Números (KPIs): Quando o faturamento sobe, o texto anterior rola para cima (y: -20, opacity: 0) e o novo número surge de baixo (y: 20 -> 0) para evitar cortes secos, mantendo a percepção de fluxo orgânico de dados contínuos.

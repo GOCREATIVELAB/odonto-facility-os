@@ -1,0 +1,55 @@
+# SITEMAP: Odonto Facility OS
+**Versão:** 1.0.0 | **Escopo:** Mapeamento de Rotas, Componentes Visuais e Estados de Câmera 3D
+
+## 1. Módulo de Autenticação e Roteamento de Permissões
+**`/login`**
+*   **Componentes UI:** Formulário Glassmorphism centralizado, Fundo dinâmico com desfoque pesado (blur-3xl).
+*   **Ações:** Login via credenciais OTP (One-Time Password) ou Biometria.
+*   **State/Redirect:** Identificação do Nível de Acesso (Nível 1: Societário, Nível 2: RH, Nível 3: Recepção) -> Redireciona para `/os`.
+
+## 2. Workspace Operacional (Core)
+**`/os` (Root Dashboard)**
+*   **Renderização de Fundo (Engine 3D):** `Canvas` persistente `z-index: 0`. Renderiza o mapa da clínica em perspectiva isométrica (Câmera Estática Global inicial: `x: 50, y: 50, z: 50, target: 0, 0, 0`).
+*   **Overlay UI (`z-index: 10`):** Grade de layout `pointer-events: none` com painéis laterais em `pointer-events: auto`.
+*   **Barra de Navegação Superior (Módulos de Agentes):**
+    *   `Tab: Quadro Societário` -> Altera painéis laterais para KPIs financeiros.
+    *   `Tab: RH` -> Altera painéis laterais para gestão de equipe.
+    *   `Tab: Recepção` -> Altera painéis laterais para triagem e fila.
+
+### 2.1. Visões Departamentais (Painéis Laterais Dinâmicos)
+**`/os?view=societario` (Controle Executivo)**
+*   **Painel Esquerdo (`<EventFeed>`):** Log cronológico de fechamento de planos, pagamentos aprovados e alertas de ociosidade crítica.
+*   **Painel Direito (`<KPIBoard>`):** 
+    *   Faturamento ao vivo (R$).
+    *   Ticket Médio diário.
+    *   Taxa de Conversão de Avaliações (%).
+    *   Ocupação Geral da Clínica (Gráfico de anel SVG).
+*   **Comportamento 3D:** Câmera no modo "Visão de Deus" (Panorâmica isométrica abrangendo todas as salas).
+
+**`/os?view=rh` (Controle de Pessoal)**
+*   **Painel Esquerdo (`<StaffList>`):** Lista de dentistas logados. Indicadores de: Em atendimento (verde), Pausa (amarelo), Fim de turno próximo (cinza).
+*   **Painel Direito (`<AlertPanel>`):** Notificações do Agente de RH (ex: "Dr. X está há 4h sem pausa", "Prontuários pendentes de assinatura: 3").
+*   **Comportamento 3D:** Marcadores de funcionários (`CSS2DRenderer`) ficam em destaque, pacentes recebem opacidade reduzida (0.3) no 3D.
+
+**`/os?view=recepcao` (Controle de Fluxo)**
+*   **Painel Esquerdo (`<WaitingList>`):** Lista de pacientes aguardando. Filtros por: Chegada, Pré-agendado, Urgência. Exibição de ETA (Tempo Estimado de Espera) atualizado a cada minuto.
+*   **Painel Direito (`<TriageForm>`):** Formulário de input rápido para novos pacientes (Nome, Especialidade, Urgência). Botão "Despachar" que aciona a IA de roteamento.
+*   **Comportamento 3D:** Foco no corredor de entrada e sofás da recepção. Avatares instanciados ganham "pulse animation" de destaque.
+
+### 2.2. Drill-down de Consultórios (Zoom 3D e Dados Locais)
+*Acionados via clique no mapa 3D ou seleção nas listas da UI.*
+
+**`/os/sala/:id` (id: 1, 2, 3 - Clínico Geral)**
+*   **Painel Flutuante Central (`<RoomModal>`):** Oculta painéis laterais. Exibe: Paciente atual, Procedimento (ex: Limpeza), Médico responsável, Timer regressivo da consulta.
+*   **Comportamento 3D:** GSAP interpola a câmera para aproximação isométrica (Zoom-in) centralizada na respectiva cadeira odontológica. As paredes ao redor ficam invisíveis (`transmission: 1`).
+
+**`/os/sala/4` (Urgência e Cirurgia)**
+*   **Interface Exclusiva:** Painel com bordas vermelhas translúcidas. Exibe status de insumos críticos e dados do trauma/procedimento bucomaxilo. Alertas para não interrupção.
+
+**`/os/sala/5` (Ortodontia / Revisões)**
+*   **Interface Exclusiva:** Foco em contagem de atendimentos. Exibe a "Fila Rápida" específica desta sala, métrica de atendimentos/hora.
+
+## 3. Configurações do Sistema
+**`/os/settings` (Overlay Modal)**
+*   `/os/settings/agents`: Parâmetros de prompt do Gemini (Ajuste de rigidez da IA para alertas de tempo).
+*   `/os/settings/system`: Configuração de Websockets, conectividade Supabase e cache de rotas.

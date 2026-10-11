@@ -1,0 +1,6 @@
+{
+  "name": "Odonto Facility OS",
+  "description": "Gêmeo digital clínico 3D em tempo real com controle operacional, visualização de consultórios, triagem inteligente e inteligência multi-agente.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
